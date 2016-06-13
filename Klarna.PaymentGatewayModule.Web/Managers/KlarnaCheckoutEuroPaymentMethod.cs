@@ -1,5 +1,4 @@
 ﻿using Klarna.Api;
-using Klarna.Checkout;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
@@ -11,7 +10,7 @@ using VirtoCommerce.Domain.Payment.Model;
 
 namespace Klarna.Checkout.Euro.Managers
 {
-	public class KlarnaCheckoutEuroPaymentMethod : VirtoCommerce.Domain.Payment.Model.PaymentMethod
+    public class KlarnaCheckoutEuroPaymentMethod : VirtoCommerce.Domain.Payment.Model.PaymentMethod
 	{
 		private const string _euroTestBaseUrl = "https://checkout.testdrive.klarna.com/checkout/orders";
 		private const string _euroLiveBaseUrl = "https://checkout.klarna.com/checkout/orders";
