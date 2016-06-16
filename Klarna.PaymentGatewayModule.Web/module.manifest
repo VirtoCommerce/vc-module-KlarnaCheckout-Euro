@@ -7,8 +7,8 @@
         <dependency id="VirtoCommerce.Core" version="2.11.0" />
     </dependencies>
 
-    <title>Klarna Checkout europe payment gateway</title>
-    <description>APIs and UI for Klarna Checkout europe payment gateway</description>
+    <title>Klarna Checkout Europe payment gateway</title>
+    <description>APIs and UI for Klarna Checkout Europe payment gateway</description>
     <authors>
         <author>Virto Commerce</author>
     </authors>
@@ -18,8 +18,8 @@
     <projectUrl>http://virtocommerce.com/</projectUrl>
     <iconUrl>Modules/$(Klarna.Checkout.Euro)/Content/Klarna-Logo.png</iconUrl>
     <releaseNotes>First version.</releaseNotes>
-    <copyright>Copyright © 2011-2015 Virto Commerce. All rights reserved</copyright>
-    <tags>klarna checkout europe payment</tags>
+    <copyright>Copyright © 2011-2016 Virto Commerce. All rights reserved</copyright>
+    <tags>Klarna checkout Europe payment</tags>
 
     <assemblyFile>Klarna.Checkout.Euro.dll</assemblyFile>
     <moduleType>Klarna.Checkout.Euro.Module, Klarna.Checkout.Euro</moduleType>
@@ -47,7 +47,7 @@
                     <value>real</value>
                 </allowedValues>
                 <title>Mode</title>
-                <description>Mode of klarna payment gateway (test or real)</description>
+                <description>Mode of Klarna payment gateway (test or real)</description>
             </setting>
             <setting>
                 <name>Klarna.Checkout.Euro.TermsUrl</name>
