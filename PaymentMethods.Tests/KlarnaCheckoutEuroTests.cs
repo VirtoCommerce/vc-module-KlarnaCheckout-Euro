@@ -133,12 +133,12 @@ namespace PaymentMethods.Tests
             settings.Add(new SettingEntry
             {
                 Name = "Klarna.Checkout.Euro.CheckoutUrl",
-                Value = "checkout/step1"
+                Value = "cart/checkout/#/shipping-address"
             });
             settings.Add(new SettingEntry
             {
                 Name = "Klarna.Checkout.Euro.ConfirmationUrl",
-                Value = "checkout/externalpaymentcallback"
+                Value = "cart/externalpaymentcallback"
             });
             settings.Add(new SettingEntry
             {

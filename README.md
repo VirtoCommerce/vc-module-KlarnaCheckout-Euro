@@ -14,6 +14,9 @@ Installing the module:
 * **Checkout Url** - Klarna Checkout Url
 * **Confirmation Url** - Klarna Confirmation Url
 * **Payment action type** - Action type for payment
+* **Purchase country two letter code** - Purchase country two letter code used for creating payment, it must be exact as your chosen currency and locale
+* **Purchase currency three letter code** - Purchase currency three letter code used for creating payment, it must be chosen with country and locale
+* **Locale** - Purchase locale code used for creating payment, it must be chosen with currency and country
 
 
 # License

@@ -121,7 +121,7 @@
     <value>Klarna Checkout euro payment integration</value>
   </data>
   <data name="PaymentMethodLogoUrl" xml:space="preserve">
-    <value>http://virtocommerce.com/Content/images/Blue-black.png</value>
+    <value>https://cdn.klarna.com/1.0/shared/image/generic/logo/sv_se/basic/blue-black.png</value>
   </data>
   <data name="PaymentMethodName" xml:space="preserve">
     <value>Klarna Checkout Europe</value>

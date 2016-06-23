@@ -16,7 +16,7 @@
         <owner>Virto Commerce</owner>
     </owners>
     <projectUrl>http://virtocommerce.com/</projectUrl>
-    <iconUrl>Modules/$(Klarna.Checkout.Euro)/Content/Klarna-Logo.png</iconUrl>
+    <iconUrl>https://cdn.klarna.com/1.0/shared/image/generic/logo/sv_se/basic/blue-black.png</iconUrl>
     <releaseNotes>First version.</releaseNotes>
     <copyright>Copyright © 2011-2016 Virto Commerce. All rights reserved</copyright>
     <tags>Klarna checkout Europe payment</tags>
@@ -80,6 +80,49 @@
                 <defaultValue>Sale</defaultValue>
                 <title>Payment action type</title>
                 <description>Action type of payment</description>
+            </setting>
+            <setting>
+                <name>Klarna.Checkout.Euro.PurchaseCountyTwoLetterCode</name>
+                <valueType>string</valueType>
+                <allowedValues>
+                    <value>SE</value>
+                    <value>DK</value>
+                    <value>AT</value>
+                    <value>NO</value>
+                    <value>FI</value>
+                    <value>DE</value>
+                </allowedValues>
+                <defaultValue>SE</defaultValue>
+                <title>Purchase country two letter code</title>
+                <description>Purchase country two letter code used for creating payment, it must be exact as your chosen currency and locale</description>
+            </setting>
+            <setting>
+                <name>Klarna.Checkout.Euro.PurchaseCurrency</name>
+                <valueType>string</valueType>
+                <allowedValues>
+                    <value>SEK</value>
+                    <value>DKK</value>
+                    <value>EUR</value>
+                    <value>NOK</value>
+                </allowedValues>
+                <defaultValue>SEK</defaultValue>
+                <title>Purchase currency three letter code</title>
+                <description>Purchase currency three letter code used for creating payment, it must be chosen with country and locale</description>
+            </setting>
+            <setting>
+                <name>Klarna.Checkout.Euro.Locale</name>
+                <valueType>string</valueType>
+                <allowedValues>
+                    <value>sv-se</value>
+                    <value>da-dk</value>
+                    <value>de-at</value>
+                    <value>nb-no</value>
+                    <value>fi-fi</value>
+                    <value>de-de</value>
+                </allowedValues>
+                <defaultValue>sv-se</defaultValue>
+                <title>Locale</title>
+                <description>Purchase locale code used for creating payment, it must be chosen with currency and country</description>
             </setting>
         </group>
     </settings>
