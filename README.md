@@ -7,7 +7,7 @@ Installing the module:
 * Manually: download module zip package from https://github.com/VirtoCommerce/vc-module-KlarnaCheckout-Euro/releases. In VC Manager go to Configuration -> Modules -> Advanced -> upload module package -> Install.
 
 # Module management and settings UI
-![image](https://cloud.githubusercontent.com/assets/5801549/16379474/6c2dc480-3c7a-11e6-9486-591636eb83d5.png)
+![image](https://cloud.githubusercontent.com/assets/5801549/16420018/68299178-3d58-11e6-94ff-77e6e22be134.png)
 
 # Settings
 * **Application key** - Klarna application key from credentials
