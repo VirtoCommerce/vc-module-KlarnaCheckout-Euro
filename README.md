@@ -9,7 +9,7 @@ Installing the module:
 # Settings
 * **Application key** - Klarna application key from credentials
 * **Secret key** - Klarna secret key from credentials
-* **Mode** - Mode of Klarna payment gateway (test or real)
+* **Working mode** - Mode of Klarna payment gateway (test or real)
 * **Terms Url** - Klarna Terms Url
 * **Checkout Url** - Klarna Checkout Url
 * **Confirmation Url** - Klarna Confirmation Url
