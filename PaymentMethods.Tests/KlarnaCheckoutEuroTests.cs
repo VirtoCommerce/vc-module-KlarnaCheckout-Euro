@@ -3,8 +3,6 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using Klarna.Checkout.Euro.Managers;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using VirtoCommerce.CartModule.Data.Repositories;
-using VirtoCommerce.CartModule.Data.Services;
 using VirtoCommerce.CatalogModule.Data.Repositories;
 using VirtoCommerce.CatalogModule.Data.Services;
 using VirtoCommerce.CoreModule.Data.Services;
@@ -31,7 +29,7 @@ namespace PaymentMethods.Tests
         public void CapturePayment()
         {
             var service = GetCustomerOrderService();
-            var order = service.GetById("9ae2ccce-008d-42bd-952b-9dbd9ac88e6a", CustomerOrderResponseGroup.Full);
+            var order = service.GetByIds(new[] { "9ae2ccce-008d-42bd-952b-9dbd9ac88e6a" }, CustomerOrderResponseGroup.Full.ToString()).FirstOrDefault();
             var method = GetMethod();
 
             var context = new CaptureProcessPaymentEvaluationContext
@@ -42,10 +40,10 @@ namespace PaymentMethods.Tests
             var result = method.CaptureProcessPayment(context);
 
             service = GetCustomerOrderService();
-            service.Update(new CustomerOrder[] { order });
+            service.SaveChanges(new CustomerOrder[] { order });
 
             service = GetCustomerOrderService();
-            order = service.GetById("9ae2ccce-008d-42bd-952b-9dbd9ac88e6a", CustomerOrderResponseGroup.Full);
+            order = service.GetByIds(new[] { "9ae2ccce-008d-42bd-952b-9dbd9ac88e6a" }, CustomerOrderResponseGroup.Full.ToString()).FirstOrDefault();
 
             Assert.AreEqual(PaymentStatus.Paid, order.InPayments.First().PaymentStatus);
             Assert.IsTrue(order.InPayments.First().IsApproved);
@@ -56,7 +54,7 @@ namespace PaymentMethods.Tests
         public void VoidPayment()
         {
             var service = GetCustomerOrderService();
-            var order = service.GetById("161a7df0-a90f-4beb-a23a-9b043f3e5bcb", CustomerOrderResponseGroup.Full);
+            var order = service.GetByIds(new[] { "161a7df0-a90f-4beb-a23a-9b043f3e5bcb" }, CustomerOrderResponseGroup.Full.ToString()).FirstOrDefault();
             var method = GetMethod();
 
             var context = new VoidProcessPaymentEvaluationContext
@@ -67,20 +65,14 @@ namespace PaymentMethods.Tests
             var result = method.VoidProcessPayment(context);
 
             service = GetCustomerOrderService();
-            service.Update(new CustomerOrder[] { order });
+            service.SaveChanges(new CustomerOrder[] { order });
 
             service = GetCustomerOrderService();
-            order = service.GetById("161a7df0-a90f-4beb-a23a-9b043f3e5bcb", CustomerOrderResponseGroup.Full);
+            order = service.GetByIds(new[] { "161a7df0-a90f-4beb-a23a-9b043f3e5bcb" }, CustomerOrderResponseGroup.Full.ToString()).FirstOrDefault();
 
             Assert.AreEqual(PaymentStatus.Voided, order.InPayments.First().PaymentStatus);
             Assert.IsTrue(!order.InPayments.First().IsApproved);
             Assert.IsNotNull(order.InPayments.First().VoidedDate);
-        }
-
-        [TestMethod]
-        public void RefundPayment()
-        {
-
         }
 
         private CustomerOrderServiceImpl GetCustomerOrderService()
@@ -91,18 +83,13 @@ namespace PaymentMethods.Tests
                 return new OrderRepositoryImpl("VirtoCommerce", new AuditableInterceptor(null), new EntityPrimaryKeyGeneratorInterceptor());
             };
 
-            Func<ICartRepository> repositoryFactory = () =>
-            {
-                return new CartRepositoryImpl("VirtoCommerce", new AuditableInterceptor(null));
-            };
 
             var orderEventPublisher = new EventPublisher<OrderChangeEvent>(Enumerable.Empty<IObserver<OrderChangeEvent>>().ToArray());
             var cartEventPublisher = new EventPublisher<CartChangeEvent>(Enumerable.Empty<IObserver<CartChangeEvent>>().ToArray());
-            var cartService = new ShoppingCartServiceImpl(repositoryFactory, cartEventPublisher, null, null);
             var dynamicPropertyService = new DynamicPropertyService(platformRepositoryFactory);
             var settingManager = new SettingsManager(null, null, null, null);
 
-            var orderService = new CustomerOrderServiceImpl(orderRepositoryFactory, new TimeBasedNumberGeneratorImpl(), orderEventPublisher, cartService, GetItemService(), dynamicPropertyService, null, null, null);
+            var orderService = new CustomerOrderServiceImpl(orderRepositoryFactory, new TimeBasedNumberGeneratorImpl(), orderEventPublisher, dynamicPropertyService, null, null, null);
             return orderService;
         }
 
