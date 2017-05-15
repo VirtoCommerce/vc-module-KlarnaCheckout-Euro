@@ -1,4 +1,5 @@
 ﻿using Klarna.Api;
+using Klarna.Checkout.Euro.Helpers;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
@@ -405,16 +406,16 @@ namespace Klarna.Checkout.Euro.Managers
                 }
                 if (lineItem.Price > 0)
                 {
-                    addedItem.Add("unit_price", (int)Math.Round(lineItem.PlacedPriceWithTax * 100, MidpointRounding.AwayFromZero));
-                    //addedItem.Add("total_price_excluding_tax", (int)Math.Round(lineItem.Price * lineItem.Quantity * 100, MidpointRounding.AwayFromZero));
+                    addedItem.Add("unit_price", (lineItem.PlacedPriceWithTax * 100).Round());
+                    //addedItem.Add("total_price_excluding_tax", (lineItem.Price * lineItem.Quantity * 100).Round());
                 }
 
                 if (lineItem.TaxPercentRate > 0)
                 {
-                    //addedItem.Add("total_price_including_tax", (int)Math.Round((lineItem.Price * lineItem.Quantity + lineItem.Tax) * 100, MidpointRounding.AwayFromZero));
-                    //addedItem.Add("total_tax_amount", (int)Math.Round(lineItem.Tax * 100, MidpointRounding.AwayFromZero));
-                    //addedItem.Add("tax_rate", (int)Math.Round(lineItem.TaxDetails.Sum(td => td.Rate) * 10000, MidpointRounding.AwayFromZero));
-                    addedItem.Add("tax_rate", (int)Math.Round(lineItem.TaxPercentRate * 100, MidpointRounding.AwayFromZero));
+                    //addedItem.Add("total_price_including_tax", ((lineItem.Price * lineItem.Quantity + lineItem.Tax) * 100).Round());
+                    //addedItem.Add("total_tax_amount", (lineItem.Tax * 100, MidpointRounding.AwayFromZero).Round());
+                    //addedItem.Add("tax_rate", (lineItem.TaxDetails.Sum(td => td.Rate) * 10000).Round());
+                    addedItem.Add("tax_rate", (lineItem.TaxPercentRate * 100).Round());
                 }
                 else
                 {
@@ -437,7 +438,7 @@ namespace Klarna.Checkout.Euro.Managers
                     addedItem.Add("reference", "SHIPPING");
                     addedItem.Add("name", "Shipping Fee");
                     addedItem.Add("quantity", 1);
-                    addedItem.Add("unit_price", (int)Math.Round(shipment.Sum * 100, MidpointRounding.AwayFromZero));
+                    addedItem.Add("unit_price", (shipment.Sum * 100).Round());
 
                     addedItem.Add("tax_rate", 0);
 
