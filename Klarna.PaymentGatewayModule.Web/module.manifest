@@ -16,7 +16,7 @@
     <owners>
         <owner>Virto Commerce</owner>
     </owners>
-    <projectUrl>https://github.com/VirtoCommerce/vc-module-KlarnaCheckout-Euro</projectUrl>
+    <projectUrl>https://virtocommerce.com/apps/extensions/klarna-checkout</projectUrl>
     <iconUrl>https://cdn.klarna.com/1.0/shared/image/generic/logo/sv_se/basic/blue-black.png</iconUrl>
     <releaseNotes>First version.</releaseNotes>
     <copyright>Copyright © 2011-2016 Virto Commerce. All rights reserved</copyright>
