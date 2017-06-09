@@ -105,6 +105,7 @@ namespace PaymentMethods.Tests
             settings.Add(new SettingEntry
             {
                 Name = "Klarna.Checkout.Euro.SecretKey",
+                ValueType = SettingValueType.SecureString,
                 Value = "EodLR8tBViEpwLo"
             });
             settings.Add(new SettingEntry
