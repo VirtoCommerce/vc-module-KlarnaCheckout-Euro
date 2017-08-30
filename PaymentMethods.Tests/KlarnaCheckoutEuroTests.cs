@@ -2,155 +2,328 @@
 using System.Collections.ObjectModel;
 using System.Linq;
 using Klarna.Checkout.Euro.Managers;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using VirtoCommerce.CatalogModule.Data.Repositories;
-using VirtoCommerce.CatalogModule.Data.Services;
-using VirtoCommerce.CoreModule.Data.Services;
-using VirtoCommerce.Domain.Cart.Events;
-using VirtoCommerce.Domain.Catalog.Services;
-using VirtoCommerce.Domain.Order.Events;
 using VirtoCommerce.Domain.Order.Model;
 using VirtoCommerce.Domain.Payment.Model;
-using VirtoCommerce.OrderModule.Data.Repositories;
-using VirtoCommerce.OrderModule.Data.Services;
-using VirtoCommerce.Platform.Core.Events;
 using VirtoCommerce.Platform.Core.Settings;
-using VirtoCommerce.Platform.Data.DynamicProperties;
-using VirtoCommerce.Platform.Data.Infrastructure.Interceptors;
-using VirtoCommerce.Platform.Data.Repositories;
-using VirtoCommerce.Platform.Data.Settings;
+using Newtonsoft.Json;
+using System.IO;
+using VirtoCommerce.Domain.Store.Model;
+using VirtoCommerce.Platform.Core.Common;
+using Moq;
+using Klarna.Checkout;
+using Klarna.Checkout.HTTP;
+using System.Net;
+using Klarna.Api;
+using Klarna.Checkout.Euro.KlarnaApi;
+using Xunit;
 
 namespace PaymentMethods.Tests
 {
-    [TestClass]
     public class KlarnaCheckoutEuroTests
     {
-        [TestMethod]
-        public void CapturePayment()
+        [Fact]
+        public void SuccessProcessPayment()
         {
-            var service = GetCustomerOrderService();
-            var order = service.GetByIds(new[] { "9ae2ccce-008d-42bd-952b-9dbd9ac88e6a" }, CustomerOrderResponseGroup.Full.ToString()).FirstOrDefault();
-            var method = GetMethod();
+            var orderJson = File.ReadAllText(@"C:\PLATFORM\vc-module-KlarnaCheckout-Euro\PaymentMethods.Tests\order.json");
+            var order = JsonConvert.DeserializeObject<CustomerOrder>(orderJson);
+            order.Id = Guid.NewGuid().ToString();
+            var store = new Store { Url = "http://localhost/storefront" };
 
-            var context = new CaptureProcessPaymentEvaluationContext
+            var method = GetMethod(false);
+
+            var processPaymentEvaluationContext = method.ProcessPayment(new ProcessPaymentEvaluationContext
+                {
+                    Order = order,
+                    Payment = order.InPayments.First(),
+                    Store = store
+                });
+
+            Assert.True(!string.IsNullOrEmpty(order.InPayments.First().OuterId));
+            Assert.True(processPaymentEvaluationContext.IsSuccess);
+            Assert.True(!string.IsNullOrEmpty(processPaymentEvaluationContext.HtmlForm));
+        }
+
+        [Fact]
+        public void SuccessPostProcessPaymentAuthorize()
+        {
+            var orderJson = File.ReadAllText(@"C:\PLATFORM\vc-module-KlarnaCheckout-Euro\PaymentMethods.Tests\order.json");
+            var order = JsonConvert.DeserializeObject<CustomerOrder>(orderJson);
+            order.Id = Guid.NewGuid().ToString();
+            var store = new Store { Url = "http://localhost/storefront" };
+
+            var method = GetMethod(false);
+
+            method.ProcessPayment(new ProcessPaymentEvaluationContext
+                {
+                    Order = order,
+                    Payment = order.InPayments.First(),
+                    Store = store
+                });
+
+            var postProcessPaymentResult = method.PostProcessPayment(new PostProcessPaymentEvaluationContext
+                {
+                    Order = order,
+                    Payment = order.InPayments.First(),
+                    Store = store,
+                    OuterId = order.InPayments.First().OuterId
+            });
+
+            Assert.True(postProcessPaymentResult.IsSuccess);
+            Assert.Equal(PaymentStatus.Authorized, postProcessPaymentResult.NewPaymentStatus);
+            Assert.Equal(PaymentStatus.Authorized, order.InPayments.First().PaymentStatus);
+        }
+
+        [Fact]
+        public void SuccessPostProcessPaymentSale()
+        {
+            var orderJson = File.ReadAllText(@"C:\PLATFORM\vc-module-KlarnaCheckout-Euro\PaymentMethods.Tests\order.json");
+            var order = JsonConvert.DeserializeObject<CustomerOrder>(orderJson);
+            order.Id = Guid.NewGuid().ToString();
+            var store = new Store { Url = "http://localhost/storefront" };
+
+            var method = GetMethod(true);
+
+            method.ProcessPayment(new ProcessPaymentEvaluationContext
             {
+                Order = order,
+                Payment = order.InPayments.First(),
+                Store = store
+            });
+
+            var postProcessPaymentResult = method.PostProcessPayment(new PostProcessPaymentEvaluationContext
+            {
+                Order = order,
+                Payment = order.InPayments.First(),
+                Store = store,
+                OuterId = order.InPayments.First().OuterId
+            });
+
+            Assert.True(postProcessPaymentResult.IsSuccess);
+            Assert.Equal(PaymentStatus.Paid, postProcessPaymentResult.NewPaymentStatus);
+            Assert.Equal(PaymentStatus.Paid, order.InPayments.First().PaymentStatus);
+        }
+
+        [Fact]
+        public void SuccessCapturePaymentTest()
+        {
+            var orderJson = File.ReadAllText(@"C:\PLATFORM\vc-module-KlarnaCheckout-Euro\PaymentMethods.Tests\order.json");
+            var order = JsonConvert.DeserializeObject<CustomerOrder>(orderJson);
+            order.Id = Guid.NewGuid().ToString();
+            var store = new Store { Url = "http://localhost/storefront" };
+
+            var method = GetMethod(false);
+
+            method.ProcessPayment(new ProcessPaymentEvaluationContext
+            {
+                Order = order,
+                Payment = order.InPayments.First(),
+                Store = store
+            });
+
+            method.PostProcessPayment(new PostProcessPaymentEvaluationContext
+            {
+                Order = order,
+                Payment = order.InPayments.First(),
+                Store = store,
+                OuterId = order.InPayments.First().OuterId
+            });
+
+            var capturePaymentResult = method.CaptureProcessPayment(new CaptureProcessPaymentEvaluationContext
+            {
+                Order = order,
                 Payment = order.InPayments.First()
-            };
+            });
 
-            var result = method.CaptureProcessPayment(context);
-
-            service = GetCustomerOrderService();
-            service.SaveChanges(new CustomerOrder[] { order });
-
-            service = GetCustomerOrderService();
-            order = service.GetByIds(new[] { "9ae2ccce-008d-42bd-952b-9dbd9ac88e6a" }, CustomerOrderResponseGroup.Full.ToString()).FirstOrDefault();
-
-            Assert.AreEqual(PaymentStatus.Paid, order.InPayments.First().PaymentStatus);
-            Assert.IsTrue(order.InPayments.First().IsApproved);
-            Assert.IsNotNull(order.InPayments.First().CapturedDate);
+            Assert.True(capturePaymentResult.IsSuccess);
+            Assert.Equal(PaymentStatus.Paid, capturePaymentResult.NewPaymentStatus);
+            Assert.Equal(PaymentStatus.Paid, order.InPayments.First().PaymentStatus);
         }
 
-        [TestMethod]
-        public void VoidPayment()
+        [Fact]
+        public void SuccessVoidPaymentTest()
         {
-            var service = GetCustomerOrderService();
-            var order = service.GetByIds(new[] { "161a7df0-a90f-4beb-a23a-9b043f3e5bcb" }, CustomerOrderResponseGroup.Full.ToString()).FirstOrDefault();
-            var method = GetMethod();
+            var orderJson = File.ReadAllText(@"C:\PLATFORM\vc-module-KlarnaCheckout-Euro\PaymentMethods.Tests\order.json");
+            var order = JsonConvert.DeserializeObject<CustomerOrder>(orderJson);
+            order.Id = Guid.NewGuid().ToString();
+            var store = new Store { Url = "http://localhost/storefront" };
 
-            var context = new VoidProcessPaymentEvaluationContext
+            var method = GetMethod(false);
+
+            method.ProcessPayment(new ProcessPaymentEvaluationContext
             {
+                Order = order,
+                Payment = order.InPayments.First(),
+                Store = store
+            });
+
+            method.PostProcessPayment(new PostProcessPaymentEvaluationContext
+            {
+                Order = order,
+                Payment = order.InPayments.First(),
+                Store = store,
+                OuterId = order.InPayments.First().OuterId
+            });
+
+            var voidPaymentResult = method.VoidProcessPayment(new VoidProcessPaymentEvaluationContext
+            {
+                Order = order,
                 Payment = order.InPayments.First()
-            };
+            });
 
-            var result = method.VoidProcessPayment(context);
-
-            service = GetCustomerOrderService();
-            service.SaveChanges(new CustomerOrder[] { order });
-
-            service = GetCustomerOrderService();
-            order = service.GetByIds(new[] { "161a7df0-a90f-4beb-a23a-9b043f3e5bcb" }, CustomerOrderResponseGroup.Full.ToString()).FirstOrDefault();
-
-            Assert.AreEqual(PaymentStatus.Voided, order.InPayments.First().PaymentStatus);
-            Assert.IsTrue(!order.InPayments.First().IsApproved);
-            Assert.IsNotNull(order.InPayments.First().VoidedDate);
+            Assert.True(voidPaymentResult.IsSuccess);
+            Assert.Equal(PaymentStatus.Voided, voidPaymentResult.NewPaymentStatus);
+            Assert.Equal(PaymentStatus.Voided, order.InPayments.First().PaymentStatus);
         }
 
-        private CustomerOrderServiceImpl GetCustomerOrderService()
+        [Fact]
+        public void SuccessRefundPaymentTest()
         {
-            Func<IPlatformRepository> platformRepositoryFactory = () => new PlatformRepository("VirtoCommerce", new EntityPrimaryKeyGeneratorInterceptor(), new AuditableInterceptor(null));
-            Func<IOrderRepository> orderRepositoryFactory = () =>
+            var orderJson = File.ReadAllText(@"C:\PLATFORM\vc-module-KlarnaCheckout-Euro\PaymentMethods.Tests\order.json");
+            var order = JsonConvert.DeserializeObject<CustomerOrder>(orderJson);
+            order.Id = Guid.NewGuid().ToString();
+            var store = new Store { Url = "http://localhost/storefront" };
+
+            var method = GetMethod(true);
+
+            method.ProcessPayment(new ProcessPaymentEvaluationContext
             {
-                return new OrderRepositoryImpl("VirtoCommerce", new AuditableInterceptor(null), new EntityPrimaryKeyGeneratorInterceptor());
-            };
+                Order = order,
+                Payment = order.InPayments.First(),
+                Store = store
+            });
 
+            method.PostProcessPayment(new PostProcessPaymentEvaluationContext
+            {
+                Order = order,
+                Payment = order.InPayments.First(),
+                Store = store,
+                OuterId = order.InPayments.First().OuterId
+            });
 
-            var orderEventPublisher = new EventPublisher<OrderChangeEvent>(Enumerable.Empty<IObserver<OrderChangeEvent>>().ToArray());
-            var cartEventPublisher = new EventPublisher<CartChangeEvent>(Enumerable.Empty<IObserver<CartChangeEvent>>().ToArray());
-            var dynamicPropertyService = new DynamicPropertyService(platformRepositoryFactory);
-            var settingManager = new SettingsManager(null, null, null, null);
+            var voidPaymentResult = method.RefundProcessPayment(new RefundProcessPaymentEvaluationContext
+            {
+                Order = order,
+                Payment = order.InPayments.First()
+            });
 
-            var orderService = new CustomerOrderServiceImpl(orderRepositoryFactory, new TimeBasedNumberGeneratorImpl(), orderEventPublisher, dynamicPropertyService, null, null, null);
-            return orderService;
+            Assert.True(voidPaymentResult.IsSuccess);
+            Assert.Equal(PaymentStatus.Refunded, voidPaymentResult.NewPaymentStatus);
+            Assert.Equal(PaymentStatus.Refunded, order.InPayments.First().PaymentStatus);
         }
 
-        private KlarnaCheckoutEuroPaymentMethod GetMethod()
+        private KlarnaCheckoutEuroPaymentMethod GetMethod(bool isSale)
         {
             var settings = new Collection<SettingEntry>();
-            settings.Add(new SettingEntry
-            {
-                Name = "Klarna.Checkout.Euro.AppKey",
-                ValueType = SettingValueType.Integer,
-                Value = "3486"
-            });
-            settings.Add(new SettingEntry
-            {
-                Name = "Klarna.Checkout.Euro.SecretKey",
-                ValueType = SettingValueType.SecureString,
-                Value = "EodLR8tBViEpwLo"
-            });
-            settings.Add(new SettingEntry
-            {
-                Name = "Klarna.Checkout.Euro.Mode",
-                Value = "test"
-            });
-            settings.Add(new SettingEntry
-            {
-                Name = "Klarna.Checkout.Euro.TermsUrl",
-                Value = "checkout/terms"
-            });
-            settings.Add(new SettingEntry
-            {
-                Name = "Klarna.Checkout.Euro.CheckoutUrl",
-                Value = "cart/checkout/#/shipping-address"
-            });
-            settings.Add(new SettingEntry
-            {
-                Name = "Klarna.Checkout.Euro.ConfirmationUrl",
-                Value = "cart/externalpaymentcallback"
-            });
-            settings.Add(new SettingEntry
-            {
-                Name = "Klarna.Checkout.Euro.PaymentActionType",
-                Value = "Authorization/Capture"
+
+            settings.AddRange(new[] {
+                new SettingEntry { Name = "Klarna.Checkout.Euro.AppKey", ValueType = SettingValueType.Integer, Value = "1" },
+                new SettingEntry { Name = "Klarna.Checkout.Euro.SecretKey", ValueType = SettingValueType.SecureString, Value = "secret" },
+                new SettingEntry { Name = "Klarna.Checkout.Euro.Mode", Value = "test" },
+                new SettingEntry { Name = "Klarna.Checkout.Euro.TermsUrl", Value = "checkout/terms" },
+                new SettingEntry { Name = "Klarna.Checkout.Euro.CheckoutUrl", Value = "cart/checkout/#/shipping-address" },
+                new SettingEntry { Name = "Klarna.Checkout.Euro.ConfirmationUrl", Value = "cart/externalpaymentcallback" },
+                new SettingEntry { Name = "Klarna.Checkout.Euro.PurchaseCountyTwoLetterCode", Value = "SE" },
+                new SettingEntry { Name = "Klarna.Checkout.Euro.PurchaseCurrency", Value = "SEK" },
+                new SettingEntry { Name = "Klarna.Checkout.Euro.Locale", Value = "sv-se" }
             });
 
-            var retVal = new KlarnaCheckoutEuroPaymentMethod
+            if (!isSale)
+            {
+                settings.Add(new SettingEntry { Name = "Klarna.Checkout.Euro.PaymentActionType", Value = "Authorization/Capture" });
+            }
+            else
+            {
+                settings.Add(new SettingEntry { Name = "Klarna.Checkout.Euro.PaymentActionType", Value = "Sale" });
+            }
+
+            var klarnaCheckoutEuroPaymentMethod = new KlarnaCheckoutEuroPaymentMethod
             {
                 Settings = settings
             };
 
-            return retVal;
+            Mock<IConnector> connector = new Mock<IConnector>();
+
+            klarnaCheckoutEuroPaymentMethod.ApiConnector = GetMockConnector();
+            klarnaCheckoutEuroPaymentMethod.KlarnaApi = GetMockKlarnaApi();
+
+            return klarnaCheckoutEuroPaymentMethod;
         }
 
-        private IItemService GetItemService()
+        private IKlarnaApi GetMockKlarnaApi()
         {
-            return new ItemServiceImpl(GetRepository, null, null);
+            var mockKlarnaApi = new Mock<IKlarnaApi>();
+
+            mockKlarnaApi.Setup(k => k.Activate(It.IsAny<string>())).Returns(new ActivateReservationResponse { InvoiceNumber = "InvoiceNumber" });
+            mockKlarnaApi.Setup(k => k.CancelReservation(It.IsAny<string>())).Returns(true);
+            mockKlarnaApi.Setup(k => k.CreditInvoice(It.IsAny<string>())).Returns("RefundNumber");
+
+            return mockKlarnaApi.Object;
         }
 
-        private ICatalogRepository GetRepository()
+        private IConnector GetMockConnector()
         {
-            var retVal = new CatalogRepositoryImpl("VirtoCommerce", new EntityPrimaryKeyGeneratorInterceptor(), new AuditableInterceptor(null));
-            return retVal;
+            var url = new Uri("http://klarna.com");
+            var secret = "My Secret";
+            var digest = new Digest();
+            var httpTransportMock = new Mock<IHttpTransport>();
+
+            var createdresponseMock = new Mock<IHttpResponse>();
+
+            //Base
+            PrepareBaseMock(httpTransportMock);
+            PreparePostProcessMock(httpTransportMock);
+            
+
+            httpTransportMock.Setup(t => t.CreateRequest(It.IsAny<Uri>())).Returns((HttpWebRequest)WebRequest.Create("http://www.contoso.com/"));
+
+            IConnector connector = new BasicConnector(httpTransportMock.Object, digest, secret, url);
+
+            return connector;
+        }
+
+        private void PrepareBaseMock(Mock<IHttpTransport> httpTransportMock)
+        {
+            var url = new Uri("http://klarna.com");
+
+            var responseMock = new Mock<IHttpResponse>();
+
+            dynamic data =
+                new
+                {
+                    gui = new { snippet = "iframe" },
+                    id = "SomeOuterId",
+                    status = "checkout_complete",
+                    reservation = "reservationNumber"
+                };
+            string dataJson = JsonConvert.SerializeObject(data);
+
+            responseMock.SetupGet(r => r.StatusCode).Returns(HttpStatusCode.OK);
+            responseMock.Setup(r => r.Header("Location")).Returns(url.OriginalString);
+            responseMock.SetupGet(r => r.Data).Returns(dataJson);
+
+            httpTransportMock.Setup(t => t.Send(It.IsAny<HttpWebRequest>(), It.IsNotIn<string>("{\"status\":\"created\"}"))).Returns(responseMock.Object);
+        }
+
+        private void PreparePostProcessMock(Mock<IHttpTransport> httpTransportMock)
+        {
+            var url = new Uri("http://klarna.com");
+
+            var responseMock = new Mock<IHttpResponse>();
+
+            dynamic createdData =
+                new
+                {
+                    gui = new { snippet = "iframe" },
+                    id = "SomeOuterId",
+                    status = "created"
+                };
+            string createdDataJson = JsonConvert.SerializeObject(createdData);
+
+            responseMock.SetupGet(r => r.StatusCode).Returns(HttpStatusCode.OK);
+            responseMock.Setup(r => r.Header("Location")).Returns(url.OriginalString);
+            responseMock.SetupGet(r => r.Data).Returns(createdDataJson);
+
+            httpTransportMock.Setup(t => t.Send(It.IsAny<HttpWebRequest>(), It.Is<string>(p => p.Equals("{\"status\":\"created\"}")))).Returns(responseMock.Object);
         }
     }
 }

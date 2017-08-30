@@ -1,5 +1,7 @@
 ﻿using Klarna.Api;
 using Klarna.Checkout.Euro.Helpers;
+using Klarna.Checkout.Euro.KlarnaApi;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
@@ -20,6 +22,7 @@ namespace Klarna.Checkout.Euro.Managers
         private const string _klarnaCheckoutUrl = "Klarna.Checkout.Euro.CheckoutUrl";
         private const string _klarnaConfirmationUrl = "Klarna.Checkout.Euro.ConfirmationUrl";
         private const string _klarnaPaymentActionType = "Klarna.Checkout.Euro.PaymentActionType";
+        private const string _klarnaPushUrl = "Klarna.Checkout.Euro.PushUrl";
 
         private const string _klarnaPurchaseCurrencyStoreSetting = "Klarna.Checkout.Euro.PurchaseCurrency";
         private const string _klarnaPurchaseCountyTwoLetterCodeStoreSetting = "Klarna.Checkout.Euro.PurchaseCountyTwoLetterCode";
@@ -104,6 +107,14 @@ namespace Klarna.Checkout.Euro.Managers
             }
         }
 
+        private string PushUrl
+        {
+            get
+            {
+                return GetSetting(_klarnaPushUrl);
+            }
+        }
+
         private bool IsTestMode
         {
             get
@@ -122,21 +133,18 @@ namespace Klarna.Checkout.Euro.Managers
             get { return PaymentMethodGroupType.Alternative; }
         }
 
+        [JsonIgnore]
+        public IConnector ApiConnector { get; set; }
+
+        [JsonIgnore]
+        public IKlarnaApi KlarnaApi { get; set; }
+
         public override ProcessPaymentResult ProcessPayment(ProcessPaymentEvaluationContext context)
         {
             var retVal = new ProcessPaymentResult();
 
             if (context.Order != null && context.Store != null && context.Payment != null)
             {
-                //string countryName = null;
-                //string currency = context.Order.Currency.ToString();
-
-                //if (context.Order.Addresses != null && context.Order.Addresses.Count > 0)
-                //{
-                //var address = context.Order.Addresses.FirstOrDefault();
-                //countryName = address.CountryName;
-                //}
-
                 retVal = ProcessKlarnaOrder(context);
             }
 
@@ -157,7 +165,10 @@ namespace Klarna.Checkout.Euro.Managers
 
             var retVal = new CaptureProcessPaymentResult();
 
-            var connector = Connector.Create(AppSecret, CheckoutBaseUri);
+            if (ApiConnector == null)
+                ApiConnector = Connector.Create(AppSecret, CheckoutBaseUri);
+
+            var connector = ApiConnector;
             var order = new Order(connector, context.Payment.OuterId);
             order.Fetch();
 
@@ -166,13 +177,10 @@ namespace Klarna.Checkout.Euro.Managers
             {
                 try
                 {
-                    var configuration = GetConfiguration();
-                    configuration.Eid = Convert.ToInt32(AppKey);
-                    configuration.Secret = AppSecret;
-                    configuration.IsLiveMode = !IsTestMode;
+                    if (KlarnaApi == null)
+                        InitializeKlarnaApi();
 
-                    Api.Api api = new Api.Api(configuration);
-                    var response = api.Activate(reservation);
+                    var response = KlarnaApi.Activate(reservation);
 
                     retVal.NewPaymentStatus = context.Payment.PaymentStatus = PaymentStatus.Paid;
                     context.Payment.CapturedDate = DateTime.UtcNow;
@@ -204,7 +212,10 @@ namespace Klarna.Checkout.Euro.Managers
 
             if (!context.Payment.IsApproved && (context.Payment.PaymentStatus == PaymentStatus.Authorized || context.Payment.PaymentStatus == PaymentStatus.Cancelled))
             {
-                var connector = Connector.Create(AppSecret, CheckoutBaseUri);
+                if (ApiConnector == null)
+                    ApiConnector = Connector.Create(AppSecret, CheckoutBaseUri);
+
+                var connector = ApiConnector;
                 var order = new Order(connector, context.Payment.OuterId);
                 order.Fetch();
 
@@ -213,13 +224,10 @@ namespace Klarna.Checkout.Euro.Managers
                 {
                     try
                     {
-                        var configuration = GetConfiguration();
-                        configuration.Eid = Convert.ToInt32(AppKey);
-                        configuration.Secret = AppSecret;
-                        configuration.IsLiveMode = !IsTestMode;
+                        if (KlarnaApi == null)
+                            InitializeKlarnaApi();
 
-                        Api.Api api = new Api.Api(configuration);
-                        var result = api.CancelReservation(reservation);
+                        var result = KlarnaApi.CancelReservation(reservation);
                         if (result)
                         {
                             retVal.NewPaymentStatus = context.Payment.PaymentStatus = PaymentStatus.Voided;
@@ -263,14 +271,18 @@ namespace Klarna.Checkout.Euro.Managers
 
             if (context.Payment.IsApproved && (context.Payment.PaymentStatus == PaymentStatus.Paid || context.Payment.PaymentStatus == PaymentStatus.Cancelled))
             {
-                var configuration = GetConfiguration();
-                configuration.Eid = Convert.ToInt32(AppKey);
-                configuration.Secret = AppSecret;
-                configuration.IsLiveMode = !IsTestMode;
+                if (KlarnaApi == null)
+                    InitializeKlarnaApi();
 
-                Api.Api api = new Api.Api(configuration);
+                var result = KlarnaApi.CreditInvoice(context.Payment.OuterId);
 
-                var result = api.CreditInvoice(context.Payment.OuterId);
+                if (!string.IsNullOrEmpty(result))
+                {
+                    retVal.NewPaymentStatus = context.Payment.PaymentStatus = PaymentStatus.Refunded;
+                    context.Payment.CancelledDate = DateTime.UtcNow;
+                    context.Payment.IsCancelled = true;
+                    retVal.IsSuccess = true;
+                }
             }
 
             return retVal;
@@ -298,7 +310,10 @@ namespace Klarna.Checkout.Euro.Managers
         {
             var retVal = new ProcessPaymentResult();
 
-            var connector = Connector.Create(AppSecret, CheckoutBaseUri);
+            if (ApiConnector == null)
+                ApiConnector = Connector.Create(AppSecret, CheckoutBaseUri);
+
+            var connector = ApiConnector;
             var order = new Order(connector);
 
             //Create cart
@@ -311,7 +326,7 @@ namespace Klarna.Checkout.Euro.Managers
                         { "terms_uri", string.Format("{0}/{1}", context.Store.Url, TermsUrl) },
                         { "checkout_uri", string.Format("{0}/{1}", context.Store.Url, CheckoutUrl) },
                         { "confirmation_uri", string.Format("{0}/{1}?sid=123&orderId={2}&", context.Store.Url, ConfirmationUrl, context.Order.Id) + "klarna_order_id={checkout.order.id}" },
-                        { "push_uri", string.Format("{0}/{1}?sid=123&orderId={2}&", context.Store.Url, "admin/api/paymentcallback", context.Order.Id) + "klarna_order_id={checkout.order.id}" },
+                        { "push_uri", string.Format("{0}/{1}?sid=123&orderId={2}&", PushUrl, "api/paymentcallback", context.Order.Id) + "klarna_order_id={checkout.order.id}" },
                         { "back_to_store_uri", context.Store.Url }
                     };
 
@@ -348,7 +363,10 @@ namespace Klarna.Checkout.Euro.Managers
         {
             var retVal = new PostProcessPaymentResult();
 
-            var connector = Connector.Create(AppSecret, CheckoutBaseUri);
+            if (ApiConnector == null)
+                ApiConnector = Connector.Create(AppSecret, CheckoutBaseUri);
+
+            var connector = ApiConnector;
             var order = new Order(connector, context.OuterId);
             order.Fetch();
             var status = order.GetValue("status") as string;
@@ -357,7 +375,7 @@ namespace Klarna.Checkout.Euro.Managers
             {
                 var data = new Dictionary<string, object> { { "status", "created" } };
                 order.Update(data);
-                order.Fetch();
+                //order.Fetch();
                 status = order.GetValue("status") as string;
             }
 
@@ -366,7 +384,7 @@ namespace Klarna.Checkout.Euro.Managers
                 var result = CaptureProcessPayment(new CaptureProcessPaymentEvaluationContext { Payment = context.Payment });
 
                 retVal.NewPaymentStatus = context.Payment.PaymentStatus = PaymentStatus.Paid;
-                context.Payment.OuterId = retVal.OuterId;
+                context.Payment.OuterId = result.OuterId;
                 context.Payment.IsApproved = true;
                 context.Payment.CapturedDate = DateTime.UtcNow;
                 retVal.IsSuccess = true;
@@ -503,24 +521,24 @@ namespace Klarna.Checkout.Euro.Managers
 
         private Currency.Code GetCurrencyCode()
         {
-            var retVal = Currency.Code.SEK;
+            var retVal = Klarna.Api.Currency.Code.SEK;
 
             switch (PurchaseCurrency)
             {
                 case "DKK":
-                    retVal = Currency.Code.DKK;
+                    retVal = Klarna.Api.Currency.Code.DKK;
                     break;
 
                 case "EUR":
-                    retVal = Currency.Code.EUR;
+                    retVal = Klarna.Api.Currency.Code.EUR;
                     break;
 
                 case "NOK":
-                    retVal = Currency.Code.NOK;
+                    retVal = Klarna.Api.Currency.Code.NOK;
                     break;
 
                 case "SEK":
-                    retVal = Currency.Code.SEK;
+                    retVal = Klarna.Api.Currency.Code.SEK;
                     break;
             }
 
@@ -594,6 +612,18 @@ namespace Klarna.Checkout.Euro.Managers
             }
 
             return retVal;
+        }
+
+        private void InitializeKlarnaApi()
+        {
+            var configuration = GetConfiguration();
+            configuration.Eid = Convert.ToInt32(AppKey);
+            configuration.Secret = AppSecret;
+            configuration.IsLiveMode = !IsTestMode;
+
+            var api = new Api.Api(configuration);
+
+            KlarnaApi = new KlarnaApiImpl(api);
         }
 
         #endregion

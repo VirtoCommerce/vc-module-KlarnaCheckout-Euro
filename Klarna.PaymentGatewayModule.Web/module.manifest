@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <module>
     <id>Klarna.Checkout.Euro</id>
-    <version>2.12.1</version>
+    <version>2.12.2</version>
     <platformVersion>2.12.0</platformVersion>
     <dependencies>
         <dependency id="VirtoCommerce.Core" version="2.17.0" />
@@ -11,6 +11,7 @@
     <description>APIs and UI for Klarna Checkout Europe payment gateway</description>
     <authors>
         <author>Virto Commerce</author>
+        <author>Evgeny Okhrimenko</author>
         <author>Egidijus Mažeika</author>
     </authors>
     <owners>
@@ -63,6 +64,12 @@
                 <defaultValue>cart/checkout</defaultValue>
                 <title>Checkout Url</title>
                 <description>URI of your checkout page</description>
+            </setting>
+            <setting>
+                <name>Klarna.Checkout.Euro.PushUrl</name>
+                <valueType>string</valueType>
+                <title>Push Url prefix(path to admin)</title>
+                <description>URI of your endpoint for klarna success push request.</description>
             </setting>
             <setting>
                 <name>Klarna.Checkout.Euro.ConfirmationUrl</name>
