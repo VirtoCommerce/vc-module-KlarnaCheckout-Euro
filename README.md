@@ -20,6 +20,7 @@ Installing the module:
 * **Purchase country two letter code** - Purchase country two letter code used for creating payment, it must be exact as your chosen currency and locale
 * **Purchase currency three letter code** - Purchase currency three letter code used for creating payment, it must be chosen with country and locale
 * **Locale** - Purchase locale code used for creating payment, it must be chosen with currency and country
+* **Push Url** - Url of virtocommerce admin
 
 
 # License
